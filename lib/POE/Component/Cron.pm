@@ -1,6 +1,6 @@
 package POE::Component::Cron;
 
-our $VERSION = 0.01;
+our $VERSION = 0.011;
 
 use 5.008;
 use strict;
@@ -16,7 +16,7 @@ our $poe_kernel;
 sub spawn {
     my $class = shift;
     my %arg   = @_;
-	my $self = {};
+    my $self  = {};
 
     $self->{'Cron'} = POE::Session->create(
         inline_states => {
@@ -24,60 +24,66 @@ sub spawn {
                 my ($k) = $_[KERNEL];
 
                 $k->alias_set( $arg{'Alias'} || "Cron" );
-				$k->sig( 'SHUTDOWN', 'shutdown' );
+                $k->sig( 'SHUTDOWN', 'shutdown' );
             },
 
-            schedule      => \&_schedule,
-			client_event  => \&_client_event,
+            schedule     => \&_schedule,
+            client_event => \&_client_event,
 
-			shutdown      => sub {
-				my $k = $_[KERNEL];
+            shutdown => sub {
+                my $k = $_[KERNEL];
 
-				$k->alarm_remove_all();
-				$k->sig_handled();
-				exit(0);
-			},
+                $k->alarm_remove_all();
+                $k->sig_handled();
+                exit(0);
+            },
         },
     );
 
-	return bless $self, $class;
+    return bless $self, $class;
 }
 
 #
-# schedule an vent for the
+# schedule an event
+#  ARG0 is a client session,
+#  ARG1 is the client event name,
+#  ARG2 is a DateTime::Set iterator
+#  ARG3 .. $#_ are arguments to the client event
 #
 sub _schedule {
-	my ( $k, $s, $e, $ds ) = @_[ KERNEL, ARG0, ARG1, ARG2 ];
-	my $n = $ds->next;
+    my ( $k, $s, $e, $ds, @arg ) = @_[ KERNEL, ARG0 .. $#_ ];
+    my $n = $ds->next;
 
-	$k->alarm_add('client_event', $n->epoch, $s, $e, $ds);
+    $k->alarm_add( 'client_event', $n->epoch, $s, $e, $ds, @arg );
 }
 
 #
 # handle a client event and schedule the next one
+#  ARG0 is a client session,
+#  ARG1 is the client event name,
+#  ARG2 is a DateTime::Set iterator
+#  ARG3 .. $#_ are arguments to the client event
 #
 sub _client_event {
-	my ( $k, $s, $e ) = @_[ KERNEL, ARG0, ARG1 ];
+    my ( $k, $s, $e, $ds, @arg ) = @_[ KERNEL, ARG0 .. $#_ ];
 
-	$k->post( $s, $e );
-	_schedule( @_ );
+    $k->post( $s, $e, @arg);
+    _schedule(@_);
 }
 
 #
-# takes a POE::Session, an event name and a DateTime::Set 
+# takes a POE::Session, an event name and a DateTime::Set
 #
 sub add {
     my $self = shift;
-    my ($session, $event, $iterator) = @_;
-	$session->isa('POE::Session')
-	   	or die __PACKAGE__."->add: first arg must be a POE::Session";
-	$iterator->isa('DateTime::Set') 
-		or die __PACKAGE__."->add: third arg must be a DateTime::Set";
+    my ( $session, $event, $iterator ) = @_;
+    $session->isa('POE::Session')
+      or die __PACKAGE__ . "->add: first arg must be a POE::Session";
+    $iterator->isa('DateTime::Set')
+      or die __PACKAGE__ . "->add: third arg must be a DateTime::Set";
 
-	$poe_kernel->post($self->{'Cron'}, 'schedule',
-	   	$session, $event,
-		$iterator
-	);
+    $poe_kernel->post( $self->{'Cron'}, 'schedule', $session, $event,
+        $iterator );
 }
 
 1;
@@ -90,69 +96,65 @@ POE::Component::Cron - Schedule POE Events using a cron spec
 =head1 SYNOPSIS
 
     use POE::Component::Cron;
-	use DateTime::Event::Crontab;
-	use DateTime::Event::Random;
+    use DateTime::Event::Crontab;
+    use DateTime::Event::Random;
 
-    $s1 = POE::Session->create (
-		inline_states => {
-			_start => sub {
-				$_[KERNEL]->delay(_die_, 120);
-			}
+    $s1 = POE::Session->create(
+        inline_states => {
+            _start => sub {
+                $_[KERNEL]->delay( _die_, 120 );
+              }
 
-			Tick => sub {
-				print 'tick', scalar time, "\n";
-			},
+              Tick => sub {
+                print 'tick ', scalar localtime, "\n";
+              },
 
-			_die_ => sub {
-				print "_die_";
-			}
-		}
+			  Tock => sub {
+			    print 'tock ', scalar localtime, "\n";
+			  }
+
+            _die_ => sub {
+                print "_die_";
+              }
+        }
     );
 
-    $cron = POE::Component::Cron->new();
+    $cron = POE::Component::Cron->spawn();
 
-	# crontab DateTime set
-	$cron->add(
-		$s1 =>
-		Tick =>
-        DateTime::Event::Cron->from_cron('* * * * *')-> iterator(
-			span => DateTime::Span->from_datetimes(
-				start => DateTime->now,
-				end   => DateTime::Infinite::Future->new
-			)
-		),
-	);
+    # crontab DateTime set
+    $cron->add(
+        $s1 => Tick => DateTime::Event::Cron->from_cron('* * * * *')->iterator(
+            span => DateTime::Span->from_datetimes(
+                start => DateTime->now,
+                end   => DateTime::Infinite::Future->new
+            )
+        ),
+    );
 
-	# random stream of events
-	$cron->add(
-		$s2 =>
-		Tick =>
-        DateTime::Event::Random->(
-			seconds => 5,
-			start   => DateTime->now,
-		),
-	)->iterator;
+    # random stream of events
+    $cron->add(
+        $s2 => Tock => DateTime::Event::Random->(
+            seconds => 5,
+            start   => DateTime->now,
+        )->iterator
+    );
 
 
 =head1 DESCRIPTION
 
-This component encapsulates a POE session that allows events to be
-scheduled simple recurrences using a cron spec.
+This compoment encapsulates a session that sends events to client sessions
+on a schedule as defined by a DateTime::Set iterator.   The implementation is 
+streight forward if a little limited.  As of this writing there is no mechinism for deleting schedules once they have been added.
 
-At the moment this is a place holder for a more elaborate event scheduling
-system.
+=head1 METHODS
 
-=head2 Design Notes
+=head2 spawn
 
-This component creates a session that is used to post events to other sessions
-on L<DateTime::Set> schedules. 
+Start up a poco::cron.
 
-Add pushes a POE::Session, an Event name, and a DateTime::Set onto
-a list in the Cron session's hash.
+=head2 add
 
-When the dispatch event handler is run it first checks to see if
-there is a session/event pair ready and posts it. then it finds the
-soonest event in the list and sets an alarm to .
+Add another schedule of events to the.
 
 =head1 SEE ALSO
 
