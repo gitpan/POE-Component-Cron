@@ -5,7 +5,11 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     NAME              => 'POE::Component::Cron',
     VERSION_FROM      => 'lib/POE/Component/Cron.pm', # finds $VERSION
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
+    PREREQ_PM         => {
+	'DateTime::Event::Cron' => '0',
+	'DateTime::Event::Random' => '0',
+	'DateTime' => '0',
+    }, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/POE/Component/Cron.pm', # retrieve abstract from module
        AUTHOR         => 'Chris Fedde <cfedde@littleton.co.us>') : ()),

@@ -1,6 +1,6 @@
 package POE::Component::Cron;
 
-our $VERSION = 0.011;
+our $VERSION = 0.012;
 
 use 5.008;
 use strict;

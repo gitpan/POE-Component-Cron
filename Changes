@@ -1,5 +1,8 @@
 Revision history for Perl extension POE::Component::Cron.
 
+0.012 Sat Nov 27 16:37:29 MST 2004
+    - clean up some doc and add dependancies re cpansmoker
+
 0.01  Wed Jun  2 16:19:36 2004
 	- original version; created by h2xs 1.23 with options
 		-XA -n POE::Component::Cron
