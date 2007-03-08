@@ -6,6 +6,7 @@ WriteMakefile(
     NAME              => 'POE::Component::Cron',
     VERSION_FROM      => 'lib/POE/Component/Cron.pm', # finds $VERSION
     PREREQ_PM         => {
+	'POE' => 0,
 	'DateTime::Event::Cron' => '0',
 	'DateTime::Event::Random' => '0',
 	'DateTime' => '0',
