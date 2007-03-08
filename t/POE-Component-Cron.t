@@ -24,27 +24,27 @@ my $s1 = POE::Session->create(
         _start => sub {
             $_[KERNEL]->delay( '_die_', 120 );
             $_[KERNEL]->delay( 'Tock',  1 );
-			$count{$_[STATE]}++;
+            $count{ $_[STATE] }++;
         },
 
         Tick => sub {
             ok 1, 'tick ' . scalar localtime;
-			$count{$_[STATE]}++;
+            $count{ $_[STATE] }++;
         },
 
         Tock => sub {
             ok 1, 'tock ' . scalar localtime;
             $_[KERNEL]->delay( 'Tock', 10 );
-			$count{$_[STATE]}++;
+            $count{ $_[STATE] }++;
         },
 
-		Tingle => sub {
-			ok 1, 'tingle '. scalar localtime;
-			$count{$_[STATE]}++;
-		},
+        Tingle => sub {
+            ok 1, 'tingle ' . scalar localtime;
+            $count{ $_[STATE] }++;
+        },
 
         _die_ => sub {
-            ok 1, "_die_ ". $_[SESSION]->ID;
+            ok 1, "_die_ " . $_[SESSION]->ID;
             $_[KERNEL]->alarm_remove_all();
             $_[KERNEL]->signal( $_[KERNEL], 'SHUTDOWN' );
         },
@@ -59,24 +59,29 @@ my $s2 = POE::Session->create(
         _start => sub {
             $_[KERNEL]->delay( '_die_', 120.1 );
             ok 1, '_start';
-			$count{$_[STATE]}++;
+            $count{ $_[STATE] }++;
         },
 
         update => sub {
             ok 1, 'update ' . scalar localtime;
-			$count{$_[STATE]}++;
-			$update_sched->delete() if ($count{$_[STATE]} == 5);
+            $count{ $_[STATE] }++;
+            $update_sched->delete() if ( $count{ $_[STATE] } == 5 );
         },
 
         report => sub {
             ok 1, 'report ' . scalar localtime;
-			$count{$_[STATE]}++;
+            $count{ $_[STATE] }++;
+        },
+
+        modify => sub {
+            ok 1, $_[STATE] . scalar localtime;
+            $count{ $_[STATE] }++;
         },
 
         _die_ => sub {
-            ok 1, "_die_ ". $_[SESSION]->ID;
+            ok 1, "_die_ " . $_[SESSION]->ID;
             $_[KERNEL]->alarm_remove_all();
-			$count{$_[STATE]}++;
+            $count{ $_[STATE] }++;
         },
     }
 );
@@ -86,14 +91,15 @@ my @sched;
 #
 # a crontab-ish event stream
 #
-push @sched, POE::Component::Cron->new(
+push @sched,
+  POE::Component::Cron->new(
     $s1 => Tick => DateTime::Event::Cron->from_cron('* * * * *')->iterator(
         span => DateTime::Span->from_datetimes(
             start => DateTime->now,
             end   => DateTime::Infinite::Future->new
         )
     ),
-);
+  );
 
 #
 # one random event stream
@@ -108,12 +114,16 @@ $update_sched = POE::Component::Cron->new(
 #
 # another random event stream
 #
-push @sched, POE::Component::Cron->new(
+push @sched,
+  POE::Component::Cron->new(
     $s2 => report => DateTime::Event::Random->new(
         seconds => 5,
         start   => DateTime->now,
       )->iterator,
-);
+  );
+
+push @sched, 
+    POE::Component::Cron-> from_cron('* * * * *' => $s2->ID => 'modify');
 
 #
 # this stream only has two events in it
@@ -121,19 +131,17 @@ push @sched, POE::Component::Cron->new(
 my $now = DateTime->now();
 my $delta = DateTime::Duration->new( seconds => 15 );
 
-push @sched, POE::Component::Cron->new(
-	$s1 => Tingle => DateTime::Set->from_datetimes (
-		dates => [
-			$now + $delta ,
-			$now + $delta + $delta,
-		],
-	)->iterator,
-);
+push @sched,
+  POE::Component::Cron->new(
+    $s1 => Tingle => DateTime::Set->from_datetimes(
+        dates => [ $now + $delta, $now + $delta + $delta, ],
+      )->iterator,
+  );
 
 POE::Kernel->run();
 
-for (keys %count) {
-	ok $count{$_} > 0, "\$count{$_} = $count{$_}";
+for ( keys %count ) {
+    ok $count{$_} > 0, "\$count{$_} = $count{$_}";
 }
 
 ok( 1, "stopped" );
