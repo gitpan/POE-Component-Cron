@@ -2,7 +2,7 @@ package POE::Component::Cron;
 
 use 5.008;
 
-our $VERSION = 0.016;
+our $VERSION = 0.017;
 
 use strict;
 use warnings;
@@ -133,10 +133,13 @@ sub from_cron {
     my $class = shift;
     my ( $spec, $session, $event, @args ) = @_;
 
+    my $timezone = DateTime::TimeZone->new( name => 'local');
+    $timezone  ||= DateTime::TimeZone->new( name => 'GMT');
+
     $class->add(
         $session => $event => DateTime::Event::Cron->from_cron($spec)->iterator(
             span => DateTime::Span->from_datetimes(
-                start => DateTime->now( time_zone => 'local' ),
+                start => DateTime->now( time_zone => $timezone ),
                 end   => DateTime::Infinite::Future->new
               ) => @args,
         )
@@ -154,55 +157,54 @@ POE::Component::Cron - Schedule POE Events using a cron spec
 
 =head1 SYNOPSIS
 
-	use POE::Component::Cron;
-	use DateTime::Event::Crontab;
-	use DateTime::Event::Random;
+    use POE::Component::Cron;
+    use DateTime::Event::Crontab;
+    use DateTime::Event::Random;
 
-	$s1 = POE::Session->create(
-		inline_states => {
-			_start => sub {
-				$_[KERNEL]->delay( _die_, 120 );
-			}
+    $s1 = POE::Session->create(
+        inline_states => {
+            _start => sub {
+                $_[KERNEL]->delay( _die_, 120 );
+              }
 
-			Tick => sub {
-				print 'tick ', scalar localtime, "\n";
-			},
+              Tick => sub {
+                print 'tick ', scalar localtime, "\n";
+              },
 
-			Tock => sub {
-				print 'tock ', scalar localtime, "\n";
-			}
+            Tock => sub {
+                print 'tock ', scalar localtime, "\n";
+              }
 
-			_die_ => sub {
-				print "_die_";
-			}
-		}
-	);
+              _die_ => sub {
+                print "_die_";
+              }
+        }
+    );
 
-	# crontab DateTime set
-	$sched1 = POE::Component::Cron->add(
-		$s1 => Tick => DateTime::Event::Cron->from_cron('* * * * *')->iterator(
-			span => DateTime::Span->from_datetimes(
-				start => DateTime->now,
-				end	  => DateTime::Infinite::Future->new
-			)
-		),
-	);
+    # crontab DateTime set the hard way
+    $sched1 = POE::Component::Cron->add(
+        $s1 => Tick => DateTime::Event::Cron->from_cron('* * * * *')->iterator(
+            span => DateTime::Span->from_datetimes(
+                start => DateTime->now,
+                end   => DateTime::Infinite::Future->new
+            )
+        ),
+    );
 
-	# random stream of events
-	$sched2 = POE::Component::Cron->add(
-		$s2 => Tock => DateTime::Event::Random->(
-			seconds => 5,
-			start	=> DateTime->now,
-		)->iterator
-	);
+    # random stream of events
+    $sched2 = POE::Component::Cron->add(
+        $s2 => Tock => DateTime::Event::Random->(
+            seconds => 5,
+            start   => DateTime->now,
+          )->iterator
+    );
 
-	$sched3 = POE::Component::Cron-> from_cron(
-	    '* * * * *' => $s2->ID => 'modify'
-        );
+    # crontab schedule the easy way
+    $sched3 =
+      POE::Component::Cron->from_cron( '* * * * *' => $s2->ID => 'modify' );
 
-	# delete some schedule of events
-	$sched2->delete();
-	
+    # delete some schedule of events
+    $sched2->delete();
 
 =head1 DESCRIPTION
 
@@ -210,7 +212,7 @@ This component encapsulates a session that sends events to client sessions
 on a schedule as defined by a DateTime::Set iterator.	The implementation is 
 straight forward if a little limited.
 
-This is early Beta code.  The API is close to jelling.  I'd love to
+This is Beta code.  The API is close to jelling.  I'd love to
 hear your ideas if you want to share them.
 
 =head1 METHODS
@@ -227,23 +229,29 @@ Add a set of events to the schedule. the 'session and event name are passed
 to POE without even checking to see if they are valid and so have the same 
 warnnigs as ->post() itself.
 
-	$cron->add( 
-		session,
-		'event_name',
-		DateTime::Set->iterator,
-		@other_args_to_event\@session
-	);
+    $cron->add( 
+	session,
+	'event_name',
+	DateTime::Set->iterator,
+	@other_args_to_event\@session
+    );
+
+=head2 new
+
+new is an alias for add
 
 =head2 from_cron
 
 Add a schedule using a simple syntax for plain old cron spec.
 
-    POE::Component::Cron-> from_cron('* * * * *' => session => event);
+    POE::Component::Cron-> from_cron('*/5 */2 * * 1' => session => event);
+
+Accepts the cron syntax as defined by DateTime::Event::Cron which is pretty
+the same as that used by common linux cron.
 
 =head2 delete
 
-remove a schedule. you did hang on to the handle returned by add didn't you?
-
+remove a schedule using the handle returned from ->add, ->new or ->from_cron;
 
 =head1 SEE ALSO
 

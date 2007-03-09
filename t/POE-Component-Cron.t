@@ -122,6 +122,7 @@ push @sched,
       )->iterator,
   );
 
+# an event stream using the easy syntax.
 push @sched, 
     POE::Component::Cron-> from_cron('* * * * *' => $s2->ID => 'modify');
 
