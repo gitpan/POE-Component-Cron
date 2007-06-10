@@ -2,7 +2,7 @@ package POE::Component::Cron;
 
 use 5.008;
 
-our $VERSION = 0.017;
+our $VERSION = 0.018;
 
 use strict;
 use warnings;
@@ -114,7 +114,7 @@ sub add {
         'schedule', $session, $event, $iterator, $ticket, @args, );
     $Schedule_Ticket{$ticket} = ();
 
-    return bless \$ticket, $class;
+    return bless \$ticket, ref $class || $class;
 }
 
 sub delete {
@@ -133,16 +133,18 @@ sub from_cron {
     my $class = shift;
     my ( $spec, $session, $event, @args ) = @_;
 
-    my $timezone = DateTime::TimeZone->new( name => 'local');
-    $timezone  ||= DateTime::TimeZone->new( name => 'GMT');
+    my $timezone = DateTime::TimeZone->new( name => 'local' );
+    $timezone ||= DateTime::TimeZone->new( name => 'GMT' );
 
     $class->add(
-        $session => $event => DateTime::Event::Cron->from_cron($spec)->iterator(
+        $session =>
+          $event => DateTime::Event::Cron->from_cron($spec)->iterator(
             span => DateTime::Span->from_datetimes(
                 start => DateTime->now( time_zone => $timezone ),
                 end   => DateTime::Infinite::Future->new
-              ) => @args,
-        )
+            )
+          ),
+        @args,
     );
 }
 

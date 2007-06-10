@@ -43,6 +43,10 @@ my $s1 = POE::Session->create(
             $count{ $_[STATE] }++;
         },
 
+	Tawk => sub {
+	    ok( $_[ARG0] eq "Talk", "Tawk Talk" );
+	},
+
         _die_ => sub {
             ok 1, "_die_ " . $_[SESSION]->ID;
             $_[KERNEL]->alarm_remove_all();
@@ -78,6 +82,10 @@ my $s2 = POE::Session->create(
             $count{ $_[STATE] }++;
         },
 
+	track => sub {
+	    ok( $_[ARG0] eq "Test", "track Test" );
+	},
+
         _die_ => sub {
             ok 1, "_die_ " . $_[SESSION]->ID;
             $_[KERNEL]->alarm_remove_all();
@@ -101,6 +109,7 @@ push @sched,
     ),
   );
 
+
 #
 # one random event stream
 #
@@ -109,6 +118,17 @@ $update_sched = POE::Component::Cron->new(
         seconds => 5,
         start   => DateTime->now,
       )->iterator,
+);
+
+#
+# add another stream
+#
+$update_sched->add(
+    $s2 => track => DateTime::Event::Random->new(
+        seconds => 2,
+        start   => DateTime->now,
+      )->iterator,
+      'Test'
 );
 
 #
@@ -124,12 +144,16 @@ push @sched,
 
 # an event stream using the easy syntax.
 push @sched, 
-    POE::Component::Cron-> from_cron('* * * * *' => $s2->ID => 'modify');
+    POE::Component::Cron->from_cron('* * * * *' => $s2->ID => 'modify');
+
+# an event stream using the easy syntax with an argument
+push @sched, 
+    POE::Component::Cron->from_cron('* * * * *' => $s1->ID => Tawk => 'Talk');
 
 #
 # this stream only has two events in it
 #
-my $now = DateTime->now();
+my $now   = DateTime->now();
 my $delta = DateTime::Duration->new( seconds => 15 );
 
 push @sched,
