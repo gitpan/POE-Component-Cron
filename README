@@ -1,7 +1,7 @@
-POE-Component-Cron version 0.17
+POE-Component-Cron version 0.18
 ===============================
 
-A schedule component for POE. 
+A cron like event schedule component for POE. 
 
 INSTALLATION
 

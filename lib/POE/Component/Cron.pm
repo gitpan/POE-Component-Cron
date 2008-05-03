@@ -2,7 +2,7 @@ package POE::Component::Cron;
 
 use 5.008;
 
-our $VERSION = 0.018;
+our $VERSION = 0.019;
 
 use strict;
 use warnings;
@@ -11,6 +11,8 @@ use POE;
 use DateTime;
 use DateTime::Infinite;
 use DateTime::Span;
+use DateTime::Event::Cron;
+use DateTime::TimeZone;
 use Time::HiRes qw( time );
 our $poe_kernel;
 
@@ -214,9 +216,6 @@ This component encapsulates a session that sends events to client sessions
 on a schedule as defined by a DateTime::Set iterator.	The implementation is 
 straight forward if a little limited.
 
-This is Beta code.  The API is close to jelling.  I'd love to
-hear your ideas if you want to share them.
-
 =head1 METHODS
 
 =head2 spawn
@@ -227,7 +226,7 @@ handle that can then be added to.
 
 =head2 add
 
-Add a set of events to the schedule. the 'session and event name are passed
+Add a set of events to the schedule. the session and event name are passed
 to POE without even checking to see if they are valid and so have the same 
 warnnigs as ->post() itself.
 
@@ -265,7 +264,7 @@ Chris Fedde, E<lt>cfedde@cpan.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2007 by Chris Fedde
+Copyright (C) 2008 by Chris Fedde
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.3 or,
