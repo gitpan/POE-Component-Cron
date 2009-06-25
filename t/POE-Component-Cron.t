@@ -157,7 +157,7 @@ my $now   = DateTime->now();
 my $delta = DateTime::Duration->new( seconds => 15 );
 
 push @sched,
-  POE::Component::Cron->new(
+  POE::Component::Cron->add(
     $s1 => Tingle => DateTime::Set->from_datetimes(
         dates => [ $now + $delta, $now + $delta + $delta, ],
       )->iterator,
