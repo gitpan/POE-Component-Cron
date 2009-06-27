@@ -2,12 +2,11 @@ package POE::Component::Cron;
 
 use 5.008;
 
-our $VERSION = 0.020;
+our $VERSION = 0.021;
 
 use strict;
 use warnings;
 
-use POE::Component::Schedule;
 use base 'POE::Component::Schedule';
 use DateTime::TimeZone;
 use DateTime::Event::Cron;
